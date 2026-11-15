@@ -1,4 +1,25 @@
 const BusinessRegistration = require('../models/BusinessRegistration');
+const mongoose = require('mongoose');
+
+const getValidObjectId = (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return null;
+  }
+
+  return new mongoose.Types.ObjectId(id);
+};
+
+const pickAllowedFields = (payload, fields) => {
+  const updates = {};
+
+  fields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      updates[field] = payload[field];
+    }
+  });
+
+  return updates;
+};
 
 const getBusinessRegistrations = async (req, res) => {
   try {
@@ -24,8 +45,13 @@ const createBusinessRegistration = async (req, res) => {
 
 const getBusinessRegistrationById = async (req, res) => {
   try {
+    const recordId = getValidObjectId(req.params.id);
+    if (!recordId) {
+      return res.status(400).json({ message: 'Invalid BusinessRegistration id' });
+    }
+
     const record = await BusinessRegistration.findOne({
-      _id: req.params.id,
+      _id: recordId,
       createdBy: req.user._id,
     });
 
@@ -41,9 +67,21 @@ const getBusinessRegistrationById = async (req, res) => {
 
 const updateBusinessRegistration = async (req, res) => {
   try {
+    const recordId = getValidObjectId(req.params.id);
+    if (!recordId) {
+      return res.status(400).json({ message: 'Invalid BusinessRegistration id' });
+    }
+
+    const updates = pickAllowedFields(req.body, [
+      'businessName',
+      'ownerName',
+      'registrationNumber',
+      'status',
+    ]);
+
     const record = await BusinessRegistration.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
-      req.body,
+      { _id: recordId, createdBy: req.user._id },
+      updates,
       { new: true, runValidators: true }
     );
 
@@ -59,8 +97,13 @@ const updateBusinessRegistration = async (req, res) => {
 
 const deleteBusinessRegistration = async (req, res) => {
   try {
+    const recordId = getValidObjectId(req.params.id);
+    if (!recordId) {
+      return res.status(400).json({ message: 'Invalid BusinessRegistration id' });
+    }
+
     const record = await BusinessRegistration.findOneAndDelete({
-      _id: req.params.id,
+      _id: recordId,
       createdBy: req.user._id,
     });
 

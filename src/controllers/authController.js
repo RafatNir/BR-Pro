@@ -8,15 +8,24 @@ const generateToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   });
 
+const normalizeEmail = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return value.trim().toLowerCase();
+};
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || typeof password !== 'string') {
       return res.status(400).json({ message: 'name, email, and password are required' });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -25,7 +34,7 @@ const registerUser = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
     });
 
@@ -43,12 +52,13 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !password) {
+    if (!normalizedEmail || typeof password !== 'string') {
       return res.status(400).json({ message: 'email and password are required' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid credentials' });

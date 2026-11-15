@@ -1,4 +1,25 @@
 const Document = require('../models/Document');
+const mongoose = require('mongoose');
+
+const getValidObjectId = (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return null;
+  }
+
+  return new mongoose.Types.ObjectId(id);
+};
+
+const pickAllowedFields = (payload, fields) => {
+  const updates = {};
+
+  fields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      updates[field] = payload[field];
+    }
+  });
+
+  return updates;
+};
 
 const getDocuments = async (req, res) => {
   try {
@@ -24,7 +45,12 @@ const createDocument = async (req, res) => {
 
 const getDocumentById = async (req, res) => {
   try {
-    const document = await Document.findOne({ _id: req.params.id, createdBy: req.user._id });
+    const documentId = getValidObjectId(req.params.id);
+    if (!documentId) {
+      return res.status(400).json({ message: 'Invalid Document id' });
+    }
+
+    const document = await Document.findOne({ _id: documentId, createdBy: req.user._id });
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -38,9 +64,16 @@ const getDocumentById = async (req, res) => {
 
 const updateDocument = async (req, res) => {
   try {
+    const documentId = getValidObjectId(req.params.id);
+    if (!documentId) {
+      return res.status(400).json({ message: 'Invalid Document id' });
+    }
+
+    const updates = pickAllowedFields(req.body, ['title', 'description', 'fileUrl', 'documentType']);
+
     const document = await Document.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
-      req.body,
+      { _id: documentId, createdBy: req.user._id },
+      updates,
       { new: true, runValidators: true }
     );
 
@@ -56,7 +89,12 @@ const updateDocument = async (req, res) => {
 
 const deleteDocument = async (req, res) => {
   try {
-    const document = await Document.findOneAndDelete({ _id: req.params.id, createdBy: req.user._id });
+    const documentId = getValidObjectId(req.params.id);
+    if (!documentId) {
+      return res.status(400).json({ message: 'Invalid Document id' });
+    }
+
+    const document = await Document.findOneAndDelete({ _id: documentId, createdBy: req.user._id });
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
